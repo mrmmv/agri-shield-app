@@ -1,0 +1,6 @@
+{
+  "appId": "com.system.app",
+  "appName": "SystemApp",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
