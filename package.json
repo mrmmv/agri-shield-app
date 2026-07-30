@@ -8,7 +8,7 @@
     "add:android": "cap add android",
     "sync": "cap sync",
     "open:android": "cap open android",
-    "build": "echo 'No web build needed'"
+    "build": "npx cap add android"
   },
   "dependencies": {
     "@capacitor/android": "^6.0.0",
