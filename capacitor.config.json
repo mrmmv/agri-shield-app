@@ -1,8 +1,0 @@
-{
-  "appId": "com.bantaybukid.app",
-  "appName": "Bantay-Bukid",
-  "webDir": "www",
-  "server": {
-    "cleartext": true
-  }
-}
