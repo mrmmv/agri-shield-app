@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bantay-Bukid Omni Station</title>
+    <link rel="icon" type="image/png" href="https://bantay-bukid.duckdns.org/static/logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    colors: {
+                        agri: {
+                            base: '#f1f5f9',     
+                            card: '#ffffff',     
+                            primary: '#059669',  
+                            glow: '#10b981',     
+                            soil: '#8B5A2B',     
+                            sun: '#f59e0b',
+                            text: '#0f172a',
+                            sub: '#64748b'
+                        }
+                    },
+                    boxShadow: {
+                        'soft-card': '8px 8px 20px rgba(148,163,184,0.15), -8px -8px 20px rgba(255,255,255,0.8)',
+                        'soft-inner': 'inset 4px 4px 10px rgba(148,163,184,0.2), inset -4px -4px 10px rgba(255,255,255,0.9)',
+                        'soft-btn': '4px 4px 10px rgba(148,163,184,0.2), -4px -4px 10px rgba(255,255,255,0.9)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body, html { 
+            background-color: #f1f5f9; 
+            color: #0f172a;
+            margin: 0; padding: 0;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #perspectiveWrapper {
+            perspective: 1500px;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #appContainer {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            background-color: #f1f5f9;
+            transform-origin: left center;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.5s;
+        }
+        
+        .card-soft {
+            background: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 12px 12px 24px rgba(148,163,184,0.15), -12px -12px 24px rgba(255,255,255,0.8);
+            border: 1px solid rgba(255,255,255,0.5);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-soft:active {
+            transform: scale(0.98) translateY(2px);
+            box-shadow: 4px 4px 10px rgba(148,163,184,0.15), -4px -4px 10px rgba(255,255,255,0.8);
+        }
+
+        .ph-gauge {
+            width: 100%; height: 16px; border-radius: 8px;
+            background: linear-gradient(90deg, #ef4444 0%, #f59e0b 20%, #10b981 50%, #3b82f6 80%, #9333ea 100%);
+            box-shadow: inset 1px 1px 4px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .ph-marker {
+            width: 20px; height: 24px; 
+            background: #ffffff;
+            position: absolute; top: -4px; border-radius: 6px;
+            transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1), inset 0 2px 2px rgba(255,255,255,1);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .bar-container {
+            background: #e2e8f0;
+            box-shadow: inset 2px 2px 4px rgba(148,163,184,0.3), inset -2px -2px 4px rgba(255,255,255,0.8);
+            border-radius: 9999px;
+            height: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .input-soft {
+            background: #f8fafc;
+            box-shadow: inset 3px 3px 6px rgba(148,163,184,0.2), inset -3px -3px 6px rgba(255,255,255,0.8);
+            border: 1px solid rgba(255,255,255,0.5);
+            color: #0f172a;
+        }
+
+        #loginView {
+            background-color: #0f172a;
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 1200px;
+        }
+        .bg-3d {
+            position: absolute;
+            inset: -5%;
+            width: 110%;
+            height: 110%;
+            background-image: url('static/bg.png');
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.1s ease-out;
+            z-index: 1;
+        }
+        .overlay-3d {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.7) 0%, rgba(5, 150, 105, 0.4) 100%);
+            z-index: 2;
+        }
+        .floating-element {
+            position: absolute;
+            z-index: 3;
+            transition: transform 0.1s ease-out;
+            pointer-events: none;
+            filter: drop-shadow(0 25px 25px rgba(0,0,0,0.5));
+            animation: floatAnim 6s ease-in-out infinite;
+            mix-blend-mode: screen;
+        }
+        @keyframes floatAnim {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        .login-card-3d {
+            position: relative;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 2rem;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4);
+            transform-style: preserve-3d;
+        }
+        .title-3d {
+            transform: translateZ(60px);
+            text-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .input-3d {
+            background: rgba(255, 255, 255, 0.7) !important;
+            border: 1px solid rgba(255, 255, 255, 0.5) !important;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1) !important;
+            color: #0f172a !important;
+        }
+        .input-3d::placeholder { color: #64748b; }
+        
+        .page-view:not(.active) {
+            display: none !important;
+        }
+        .page-view.active {
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .menu-item {
+            transition: all 0.3s ease;
+        }
+        .menu-item:hover, .menu-item.active {
+            background: rgba(5, 150, 105, 0.1);
+            color: #059669;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- AUTHENTICATION OVERLAY -->
+    <div id="loginView" onmousemove="handle3DMove(event)">
+        <div class="bg-3d" id="bg3d"></div>
+        <div class="overlay-3d"></div>
+        
+        <img src="static/sensor.png" class="floating-element w-64 h-64" id="floatObj1" style="top: 10%; left: 15%; animation-delay: 0s;">
+        <img src="static/sensor.png" class="floating-element w-48 h-48 opacity-60 blur-[2px]" id="floatObj2" style="bottom: 15%; right: 10%; animation-delay: 2s; transform: scaleX(-1);">
+        
+        <div class="login-card-3d px-8 py-6 w-full max-w-md flex flex-col items-center" id="loginCard">
+            <div class="title-3d flex flex-col items-center w-full">
+                <div class="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-2xl border-4 border-white/50 mb-3 overflow-hidden">
+                    <img src="static/logo.png" alt="Bantay-Bukid Logo" class="w-full h-full object-cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 24 24\\' fill=\\'%23059669\\'%3E%3Cpath d=\\'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z\\'%3E%3C/path%3E%3C/svg%3E'; this.style.padding='1.5rem'">
+                </div>
+                <h2 class="text-4xl font-black text-white tracking-tight mb-1 text-center" style="font-family: 'Plus Jakarta Sans', sans-serif;">Bantay-Bukid</h2>
+                <p id="authSubtitle" class="text-xs font-bold text-white/80 uppercase tracking-[0.3em] mb-6 text-center">Omni Station</p>
+            </div>
+            
+            <div class="w-full" style="transform: translateZ(30px);">
+                <input type="email" id="authEmail" placeholder="Email Address" class="input-3d w-full py-3 px-5 rounded-xl font-bold mb-3 focus:outline-none focus:ring-4 focus:ring-white/40 transition-all text-base">
+                <input type="password" id="authPass" placeholder="Password" class="input-3d w-full py-3 px-5 rounded-xl font-bold mb-5 focus:outline-none focus:ring-4 focus:ring-white/40 transition-all text-base" onkeypress="if(event.key === 'Enter') doAuth()">
+                
+                <button id="authBtn" onclick="doAuth()" class="w-full bg-gradient-to-r from-agri-primary to-emerald-400 hover:from-emerald-400 hover:to-agri-primary shadow-[0_10px_20px_rgba(5,150,105,0.4)] hover:shadow-[0_15px_30px_rgba(5,150,105,0.6)] hover:-translate-y-1 text-white transition-all duration-300 py-3 rounded-xl text-base font-black tracking-wider uppercase">
+                    Enter System
+                </button>
+            </div>
+            
+            <button onclick="toggleAuthMode()" id="authModeBtn" class="mt-4 text-xs font-bold text-white/70 hover:text-white transition-colors" style="transform: translateZ(20px);">
+                No account? Initialize Station
+            </button>
+            <button onclick="showResetPassword()" class="mt-2 text-xs font-bold text-white/50 hover:text-white transition-colors" style="transform: translateZ(20px);">
+                Forgot Password?
+            </button>
+            <p id="loginError" class="text-red-300 font-bold text-sm mt-3 hidden bg-red-900/50 py-2 px-4 rounded-lg" style="transform: translateZ(20px);">Invalid credentials</p>
+            <p id="loginSuccess" class="text-emerald-300 font-bold text-sm mt-3 hidden bg-emerald-900/50 py-2 px-4 rounded-lg" style="transform: translateZ(20px);">Success!</p>
+        </div>
+    </div>
+    
+    <!-- Reset Password Modal -->
+    <div id="resetPasswordModal" class="hidden fixed inset-0 bg-agri-dark/95 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-8">
+        <div class="bg-white/10 p-8 rounded-3xl w-full max-w-sm border border-white/20 text-center shadow-2xl">
+            <h2 class="text-xl font-black text-white mb-6 tracking-wider uppercase">Reset Password</h2>
+            <input type="email" id="resetEmail" placeholder="Enter your Email" class="input-3d w-full py-3 px-5 rounded-xl font-bold mb-4 focus:outline-none focus:ring-4 focus:ring-white/40 transition-all text-base text-agri-dark bg-white">
+            <button onclick="doResetPassword()" class="w-full bg-blue-500 hover:bg-blue-400 text-white shadow-lg py-3 rounded-xl text-base font-black tracking-wider uppercase transition-all mb-4">
+                Send Reset Link
+            </button>
+            <button onclick="hideResetPassword()" class="text-xs font-bold text-white/70 hover:text-white transition-colors uppercase">
+                Cancel
+            </button>
+            <p id="resetStatusMsg" class="font-bold text-sm mt-4 hidden py-2 px-4 rounded-lg w-full"></p>
+        </div>
+    </div>
+
+    <!-- PERSPECTIVE WRAPPER FOR SIDE MENU -->
+    <div id="perspectiveWrapper" class="flex min-h-screen bg-[#f8fafc]">
+        
+        <!-- SIDE MENU -->
+        <div id="sideMenu" class="fixed md:sticky md:top-0 md:h-screen overflow-y-auto inset-y-0 left-0 w-64 bg-white z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-500 shadow-[20px_0_40px_rgba(148,163,184,0.15)] md:shadow-none flex flex-col p-6 border-r border-gray-100 flex-shrink-0">
+            <div class="flex items-center gap-4 mb-10">
+                <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-soft-btn border border-gray-50 overflow-hidden">
+                    <img src="static/logo.png" alt="Bantay-Bukid Logo" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <h2 class="text-xl font-extrabold text-agri-text leading-none">Bantay-Bukid</h2>
+                    <p class="text-[10px] font-bold text-agri-sub uppercase tracking-widest mt-1" id="menuRpiId">AGRI-001</p>
+                </div>
+            </div>
+            
+            <nav class="space-y-2 flex-1">
+                <button onclick="navTo('pageDashboard')" id="nav-pageDashboard" class="menu-item active w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-left text-agri-sub">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    Dashboard
+                </button>
+                <button onclick="navTo('pageSoil')" id="nav-pageSoil" class="menu-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-left text-agri-sub">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    Soil Monitoring
+                </button>
+                <button onclick="navTo('pageVision')" id="nav-pageVision" class="menu-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-left text-agri-sub">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    Foliar Health AI
+                </button>
+                <button onclick="navTo('pagePest')" id="nav-pagePest" class="menu-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-left text-agri-sub">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    Pest Control
+                </button>
+                <button onclick="navTo('pageWeather')" id="nav-pageWeather" class="menu-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-left text-agri-sub">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
+                    Weather Station
+                </button>
+                <button onclick="navTo('pageReports')" id="nav-pageReports" class="menu-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-left text-agri-sub">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    AI Action Reports
+                </button>
+                <button onclick="navTo('pageCharts')" id="nav-pageCharts" class="menu-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-left text-agri-sub">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                    Analytics & Trends
+                </button>
+                <button onclick="navTo('pageSettings')" id="nav-pageSettings" class="menu-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-left text-agri-sub">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    System Settings
+                </button>
+            </nav>
+            <button onclick="doLogout()" class="mt-auto flex items-center justify-center gap-2 py-3 text-sm font-bold text-red-500 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                Sign Out
+            </button>
+        </div>
+        
+        <!-- MENU BACKDROP -->
+        <div id="menuBackdrop" class="fixed inset-0 bg-slate-900/20 z-30 hidden backdrop-blur-sm transition-opacity md:hidden" onclick="toggleMenu()"></div>
+
+        <!-- MAIN APP CONTAINER -->
+        <div id="appContainer" class="flex-1 w-full relative z-30 transition-transform duration-500 bg-[#f8fafc]">
+            <div class="p-4 md:p-8 w-full max-w-full mx-auto space-y-6">
+                
+                <header class="flex justify-between items-center mb-6 mt-2">
+                    <div class="flex items-center gap-4">
+                        <button onclick="toggleMenu()" class="w-12 h-12 rounded-2xl bg-white shadow-soft-btn active:shadow-soft-inner flex items-center justify-center text-agri-primary transition-transform md:hidden">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        </button>
+                        <div>
+                            <h1 class="text-2xl font-extrabold text-agri-text tracking-tight" id="headerTitle">Dashboard</h1>
+                            <p class="text-[10px] font-bold text-agri-sub uppercase tracking-widest" id="headerSubtitle">Live Overview</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        <div class="flex items-center gap-1.5 px-3 py-1 bg-white rounded-full shadow-soft-inner border border-gray-50">
+                            <span class="relative flex h-2 w-2">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-agri-primary opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-2 w-2 bg-agri-primary"></span>
+                            </span>
+                            <span class="text-[10px] font-bold text-agri-text uppercase tracking-wider">Online</span>
+                        </div>
+                        <div class="text-sm font-bold text-agri-sun flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" clip-rule="evenodd"></path></svg>
+                            <span id="batteryVolt">-- V</span>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- ==================== DASHBOARD PAGE ==================== -->
+                <main id="pageDashboard" class="page-view active pb-10">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="card-soft p-5 flex flex-col items-center justify-center text-center">
+                            <h4 class="text-[10px] text-agri-sub font-bold uppercase tracking-wider mb-1">System Status</h4>
+                            <p class="text-xl font-extrabold text-agri-primary">ONLINE</p>
+                        </div>
+                        <div class="card-soft p-5 flex flex-col items-center justify-center text-center">
+                            <h4 class="text-[10px] text-agri-sub font-bold uppercase tracking-wider mb-1">Soil Health</h4>
+                            <p class="text-xl font-extrabold text-agri-text" id="dashSoilHealth">--</p>
+                        </div>
+                        <div class="card-soft p-5 flex flex-col items-center justify-center text-center">
+                            <h4 class="text-[10px] text-agri-sub font-bold uppercase tracking-wider mb-1">Crop Health</h4>
+                            <p class="text-xl font-extrabold text-agri-text" id="dashCropHealth">--</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="card-soft p-6 flex flex-col justify-center bg-agri-primary text-white h-full">
+                            <h2 class="text-2xl font-extrabold mb-2">Omni Station Active</h2>
+                            <p class="text-sm opacity-90 mb-6">All systems are currently monitoring the agricultural environment.</p>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 w-full">
+                                <button onclick="navTo('pageSoil')" class="bg-white/20 hover:bg-white/30 transition-colors py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest">Soil</button>
+                                <button onclick="navTo('pageVision')" class="bg-white/20 hover:bg-white/30 transition-colors py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest">AI Scan</button>
+                                <button onclick="navTo('pageWeather')" class="bg-white/20 hover:bg-white/30 transition-colors py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest">Weather</button>
+                                <button onclick="navTo('pageReports')" class="bg-white/20 hover:bg-white/30 transition-colors py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest">Reports</button>
+                            </div>
+                        </div>
+                        
+                        <div class="card-soft p-6 flex flex-col">
+                            <div class="flex items-center gap-2 mb-4">
+                                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                <h3 class="text-sm font-bold text-agri-text uppercase tracking-widest">System Analytics</h3>
+                            </div>
+                            <p class="text-sm text-slate-600 leading-relaxed font-medium" id="dashAnalysisText">
+                                Awaiting system telemetry and AI scan data...
+                            </p>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- ==================== SOIL MONITORING PAGE ==================== -->
+                <main id="pageSoil" class="page-view pb-10">
+                    <div class="flex flex-col gap-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="card-soft p-5 flex flex-col justify-center items-center text-center">
+                                <svg class="w-8 h-8 text-blue-500 mb-2 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                                <p class="text-xs text-agri-sub font-bold uppercase tracking-wider">Moisture</p>
+                                <p class="text-3xl font-extrabold text-agri-text mt-1"><span id="valMoisture">--</span><span class="text-sm text-slate-400 ml-1">%</span></p>
+                            </div>
+                            
+                            <div class="card-soft p-5 flex flex-col justify-center items-center text-center">
+                                <svg class="w-8 h-8 text-orange-500 mb-2 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                                <p class="text-xs text-agri-sub font-bold uppercase tracking-wider">Temp</p>
+                                <p class="text-3xl font-extrabold text-agri-text mt-1"><span id="valTemp">--</span><span class="text-sm text-slate-400 ml-1">°C</span></p>
+                            </div>
+                        </div>
+
+                        <!-- pH Gauge -->
+                        <div class="card-soft p-5">
+                            <div class="flex justify-between items-end mb-4">
+                                <p class="text-xs text-agri-sub font-bold uppercase tracking-wider">Soil pH Level</p>
+                                <p class="text-2xl font-extrabold text-agri-text leading-none" id="valPH">--</p>
+                            </div>
+                            <div class="ph-gauge">
+                                <div id="phMarker" class="ph-marker" style="left: 50%;"></div>
+                            </div>
+                            <div class="flex justify-between text-[9px] text-slate-500 mt-3 uppercase font-bold tracking-widest">
+                                <span class="text-red-500">Acid</span><span class="text-agri-primary">Neutral</span><span class="text-purple-500">Alk</span>
+                            </div>
+                        </div>
+
+                        <!-- NPK Bars -->
+                        <div class="card-soft p-5">
+                            <h3 class="text-xs font-bold text-agri-sub uppercase tracking-widest mb-5">NPK Nutrients</h3>
+                            <div class="space-y-5">
+                                <div>
+                                    <div class="flex justify-between mb-2">
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nitrogen</span>
+                                        <span class="text-sm font-bold text-agri-text"><span id="valN">--</span> <span class="text-[9px] text-slate-400">mg/kg</span></span>
+                                    </div>
+                                    <div class="bar-container"><div id="barN" class="bar-fill bg-blue-500" style="width: 0%"></div></div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-2">
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phosphorus</span>
+                                        <span class="text-sm font-bold text-agri-text"><span id="valP">--</span> <span class="text-[9px] text-slate-400">mg/kg</span></span>
+                                    </div>
+                                    <div class="bar-container"><div id="barP" class="bar-fill bg-purple-500" style="width: 0%"></div></div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-2">
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Potassium</span>
+                                        <span class="text-sm font-bold text-agri-text"><span id="valK">--</span> <span class="text-[9px] text-slate-400">mg/kg</span></span>
+                                    </div>
+                                    <div class="bar-container"><div id="barK" class="bar-fill bg-agri-primary" style="width: 0%"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- ==================== FOLIAR HEALTH AI PAGE ==================== -->
+                <main id="pageVision" class="page-view pb-10">
+                    <div class="card-soft p-0 overflow-hidden flex flex-col border-white/50">
+                        <div class="p-5 flex justify-between items-center border-b border-gray-100 bg-white/50 backdrop-blur-md relative z-10">
+                            <h3 class="text-md font-bold text-agri-text flex items-center gap-2">
+                                <svg class="w-5 h-5 text-agri-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                Farm Vision 360°
+                            </h3>
+                            <button onclick="triggerScan()" id="btnScan" class="bg-white shadow-soft-btn active:shadow-soft-inner text-agri-primary transition-all px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                                Scan
+                            </button>
+                        </div>
+                        
+                        <div class="relative bg-slate-50 min-h-[350px] flex items-center justify-center shadow-inner">
+                            <img id="leafImage" src="" alt="360 Scan" class="object-cover w-full h-full hidden">
+                            <div id="noLeafPlaceholder" class="text-center p-6">
+                                <div class="w-12 h-12 mx-auto mb-3 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path></svg>
+                                </div>
+                                <p class="text-xs text-agri-sub font-bold uppercase tracking-widest">Awaiting Capture</p>
+                            </div>
+                            
+                            <div class="absolute bottom-3 right-3">
+                                <div id="pestAlertBadge" class="hidden bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1.5 animate-bounce">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    Pest Alert
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="p-5 flex-1 bg-white">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div id="healthIndicator" class="w-3.5 h-3.5 rounded-full bg-slate-300 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] transition-colors duration-500"></div>
+                                <p id="healthStatus" class="font-extrabold text-agri-text text-sm uppercase tracking-wide">Waiting for Analysis</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3 mb-4">
+                                <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                    <p class="text-[10px] text-agri-sub font-bold uppercase tracking-widest mb-1 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>Weather</p>
+                                    <p id="weatherDesc" class="text-sm font-semibold text-agri-text capitalize truncate">--</p>
+                                </div>
+                                <div class="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                                    <p class="text-[10px] text-agri-sub font-bold uppercase tracking-widest mb-1 flex items-center gap-1"><svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4z"></path></svg>Irrigation</p>
+                                    <p id="irrigationNeed" class="text-sm font-semibold text-agri-text">--</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-green-50 rounded-xl p-4 border border-green-100">
+                                <p class="text-[10px] text-agri-primary font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                                    AI Report
+                                </p>
+                                <p id="aiRecommendation" class="text-sm text-slate-700 font-medium leading-snug">Connect sensor array to receive insights.</p>
+                            </div>
+                            <p id="scanTime" class="text-[10px] text-slate-400 text-center mt-4 font-semibold uppercase tracking-widest">Time: --</p>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- ==================== PEST CONTROL PAGE ==================== -->
+                <main id="pagePest" class="page-view pb-10">
+                    <div class="card-soft p-6 w-full text-center">
+                        <div class="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <h2 class="text-2xl font-extrabold text-agri-text">UV Stem Borer Trap</h2>
+                        <p class="text-sm text-agri-sub font-medium mt-2 mb-8">Autonomous 365nm pest control system. Turns on automatically at dusk to attract and eliminate harmful insects.</p>
+                        
+                        <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col md:flex-row items-center justify-between text-left gap-4">
+                            <div>
+                                <p class="text-lg font-bold text-agri-text">Manual Override</p>
+                                <p class="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Toggle Trap Array</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer trapToggleClass" onchange="toggleTrap(this.checked)">
+                                <div class="w-14 h-7 bg-slate-300 shadow-inner rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-agri-primary shadow-soft-inner"></div>
+                            </label>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- ==================== WEATHER PAGE ==================== -->
+                <main id="pageWeather" class="page-view pb-10">
+                    <div class="card-soft p-6 w-full">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 class="text-2xl font-extrabold text-agri-text">Local Weather</h2>
+                                <p class="text-sm text-agri-sub font-medium">Farm micro-climate data</p>
+                            </div>
+                            <svg class="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-center">
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Temp</p>
+                                <p class="text-xl font-bold text-agri-text"><span id="weatherTemp">28</span>°C</p>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Humidity</p>
+                                <p class="text-xl font-bold text-agri-text"><span id="weatherHum">75</span>%</p>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Wind</p>
+                                <p class="text-xl font-bold text-agri-text"><span id="weatherWind">--</span> <span class="text-xs">km/h</span></p>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Status</p>
+                                <p class="text-xs font-bold text-agri-text truncate px-2" id="weatherMainDesc">--</p>
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-xl text-blue-800 text-sm font-medium flex gap-3 items-center">
+                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span id="weatherLongDesc">Conditions are optimal for farming operations. No severe weather detected in the area.</span>
+                        </div>
+                        </div>
+                        
+                        <div class="mt-6 flex justify-end">
+                            <button onclick="analyzeWeather()" id="btnAnalyzeWeather" class="bg-agri-primary shadow-soft-btn active:shadow-soft-inner text-white px-6 py-3 rounded-xl font-bold uppercase tracking-wider text-xs transition flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                                Analyze 5-Day Impact
+                            </button>
+                        </div>
+
+                        <div id="weatherAnalysisResult" class="mt-6 hidden flex flex-col gap-4">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+                </main>
+
+                <!-- ==================== REPORTS PAGE ==================== -->
+                <main id="pageReports" class="page-view pb-10">
+                    <div class="w-full space-y-4" id="reportsContainer">
+                        <div class="text-center py-10 text-agri-sub text-sm font-bold uppercase tracking-widest">
+                            Loading AI Decisions...
+                        </div>
+                    </div>
+                </main>
+
+                <!-- ==================== CHARTS PAGE ==================== -->
+                <main id="pageCharts" class="page-view pb-10">
+                    <div class="card-soft p-5 h-[500px] flex flex-col">
+                        <h3 class="text-sm font-bold text-agri-text uppercase tracking-widest mb-6">Environmental Trend</h3>
+                        <div class="relative flex-1 w-full mb-6">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button onclick="analyzeTrends()" id="btnAnalyzeTrends" class="bg-agri-primary shadow-soft-btn active:shadow-soft-inner text-white px-6 py-3 rounded-xl font-bold uppercase tracking-wider text-xs transition flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                AI Trend Analysis
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="trendAnalysisResult" class="card-soft p-6 mt-6 w-full hidden flex-col gap-4">
+                        <!-- Injected via JS -->
+                    </div>
+                </main>
+
+                <!-- ==================== SETTINGS PAGE ==================== -->
+                <main id="pageSettings" class="page-view pb-10">
+                    <div class="card-soft p-6 space-y-8">
+                        
+                        <div>
+                            <h3 class="text-xs font-bold text-agri-sub uppercase tracking-widest mb-3">Device Identity</h3>
+                            <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Station Name / RPi No.</label>
+                                <div class="flex gap-3">
+                                    <input type="text" id="rpiNoInput" class="input-soft flex-1 py-2 px-4 rounded-lg font-bold text-sm uppercase" placeholder="AGRI-001">
+                                    <button onclick="saveRpiNo()" class="bg-white shadow-soft-btn active:shadow-soft-inner text-agri-primary px-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all">
+                                        Save
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="border-slate-100">
+
+                        <div>
+                            <h3 class="text-xs font-bold text-agri-sub uppercase tracking-widest mb-3">Localization</h3>
+                            <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">AI Output Language</label>
+                                <div class="flex gap-3">
+                                    <select id="languageInput" class="input-soft flex-1 py-2 px-4 rounded-lg font-bold text-sm">
+                                        <option value="English">English</option>
+                                        <option value="Filipino">Filipino</option>
+                                    </select>
+                                    <button onclick="saveLanguage()" class="bg-white shadow-soft-btn active:shadow-soft-inner text-agri-primary px-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all">
+                                        Save
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="border-slate-100">
+
+                        <div>
+                            <h3 class="text-xs font-bold text-agri-sub uppercase tracking-widest mb-3">Weather Integrations</h3>
+                            <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-4">
+                                <!-- API Key securely loaded from .env -->
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Location (City, Country)</label>
+                                    <input type="text" id="weatherLocationInput" class="input-soft w-full py-2 px-4 rounded-lg font-bold text-sm" placeholder="e.g. Manila, PH">
+                                </div>
+                                <button onclick="saveWeatherSettings()" class="w-full bg-agri-primary text-white shadow-soft-btn active:shadow-soft-inner px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all">
+                                    Save Weather Config
+                                </button>
+                            </div>
+                        </div>
+
+                        <hr class="border-slate-100">
+
+                        <div>
+                            <h3 class="text-xs font-bold text-agri-sub uppercase tracking-widest mb-3">System Automation</h3>
+                            <div class="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-5">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Daily 360° Scan Schedule</label>
+                                    <div class="flex gap-3">
+                                        <input type="time" id="scanTimeInput" class="input-soft flex-1 py-2 px-4 rounded-lg font-bold text-sm">
+                                        <button onclick="saveScanTime()" class="bg-white shadow-soft-btn active:shadow-soft-inner text-agri-primary px-4 rounded-lg font-bold text-xs uppercase tracking-wider transition-all">
+                                            Set
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between pt-5 border-t border-slate-200">
+                                    <div>
+                                        <p class="text-sm font-bold text-agri-text">UV Trap Array</p>
+                                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Manual 365nm Override</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="trapToggle" class="sr-only peer" onchange="toggleTrap(this.checked)">
+                                        <div class="w-12 h-6 bg-slate-300 shadow-inner rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-agri-primary shadow-soft-inner"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button onclick="fetchData()" class="w-full py-4 rounded-xl bg-white shadow-soft-btn active:shadow-soft-inner text-agri-primary font-bold uppercase tracking-widest transition-all border border-slate-50 flex justify-center items-center gap-2 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            Force Sync Telemetry
+                        </button>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        
+        window.initFirebase = async function() {
+            try {
+                const res = await fetch('https://bantay-bukid.duckdns.org/api/firebase-config');
+                const config = await res.json();
+                
+                if(!config.apiKey) return console.warn("Firebase config missing from .env");
+                
+                const app = initializeApp(config);
+                window.firebaseAuth = getAuth(app);
+                window.firebaseSignIn = signInWithEmailAndPassword;
+                window.firebaseSignUp = createUserWithEmailAndPassword;
+                window.firebaseReset = sendPasswordResetEmail;
+                window.firebaseSignOut = signOut;
+                
+                // Auth State Observer
+                onAuthStateChanged(window.firebaseAuth, (user) => {
+                    if (user) {
+                        isAuthenticated = true;
+                        document.getElementById('loginView').style.display = 'none';
+                        document.getElementById('perspectiveWrapper').style.display = 'flex';
+                        initApp();
+                    } else {
+                        isAuthenticated = false;
+                        document.getElementById('loginView').style.display = 'flex';
+                        document.getElementById('perspectiveWrapper').style.display = 'none';
+                    }
+                });
+            } catch(e) {
+                console.error("Firebase init failed:", e);
+            }
+        };
+        
+        window.initFirebase();
+    </script>
+    <script>
+        // Authentication State
+        let isAuthenticated = false;
+        let isRegisterMode = false;
+        
+        // 3D Parallax Effect
+        function handle3DMove(e) {
+            if(window.innerWidth < 768) return;
+            const xAxis = (window.innerWidth / 2 - e.pageX) / 30;
+            const yAxis = (window.innerHeight / 2 - e.pageY) / 30;
+            
+            const card = document.getElementById('loginCard');
+            if(card) card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+            
+            const bg = document.getElementById('bg3d');
+            if(bg) bg.style.transform = `translate(${xAxis * 1.5}px, ${yAxis * 1.5}px) scale(1.05)`;
+            
+            const obj1 = document.getElementById('floatObj1');
+            if(obj1) obj1.style.transform = `translate(${xAxis * -3}px, ${yAxis * -3}px)`;
+            
+            const obj2 = document.getElementById('floatObj2');
+            if(obj2) obj2.style.transform = `translate(${xAxis * 4}px, ${yAxis * 4}px) scaleX(-1)`;
+        }
+        
+        async function checkAuth() {
+            // Handled automatically by Firebase onAuthStateChanged observer
+        }
+
+        function toggleAuthMode() {
+            isRegisterMode = !isRegisterMode;
+            document.getElementById('authSubtitle').innerText = isRegisterMode ? "INITIALIZE NEW STATION" : "OMNI STATION";
+            document.getElementById('authBtn').innerText = isRegisterMode ? "REGISTER" : "ENTER SYSTEM";
+            document.getElementById('authModeBtn').innerText = isRegisterMode ? "Back to Login" : "No account? Initialize Station";
+            document.getElementById('loginError').classList.add('hidden');
+            document.getElementById('loginSuccess').classList.add('hidden');
+        }
+
+        async function doAuth() {
+            const email = document.getElementById('authEmail').value;
+            const pass = document.getElementById('authPass').value;
+            const errorLabel = document.getElementById('loginError');
+            const successLabel = document.getElementById('loginSuccess');
+            
+            errorLabel.classList.add('hidden');
+            successLabel.classList.add('hidden');
+
+            if(!email || !pass) {
+                errorLabel.innerText = "Please fill all fields.";
+                errorLabel.classList.remove('hidden');
+                return;
+            }
+            
+            try {
+                if(isRegisterMode) {
+                    await window.firebaseSignUp(window.firebaseAuth, email, pass);
+                    successLabel.innerText = "Registered & Logged in!";
+                    successLabel.classList.remove('hidden');
+                } else {
+                    await window.firebaseSignIn(window.firebaseAuth, email, pass);
+                }
+                // The Firebase observer will hide the login view automatically.
+            } catch(e) {
+                errorLabel.style.display = 'block';
+                let msg = e.message;
+                if(msg.includes('invalid-credential') || msg.includes('user-not-found') || msg.includes('wrong-password')) {
+                    msg = "Incorrect email or password.";
+                } else if(msg.includes('email-already-in-use')) {
+                    msg = "This email is already registered.";
+                } else if(msg.includes('weak-password')) {
+                    msg = "Password must be at least 6 characters.";
+                } else if(msg.includes('too-many-requests')) {
+                    msg = "Too many failed attempts. Please try again later.";
+                } else if(msg.includes('invalid-email')) {
+                    msg = "Please enter a valid email address.";
+                } else if(msg.includes('network-request-failed')) {
+                    msg = "Network error. Please check your connection.";
+                } else {
+                    msg = "An error occurred during authentication.";
+                }
+                errorLabel.innerText = msg;
+            }
+        }
+
+        function showResetPassword() {
+            document.getElementById('resetPasswordModal').classList.remove('hidden');
+        }
+        function hideResetPassword() {
+            document.getElementById('resetPasswordModal').classList.add('hidden');
+            document.getElementById('resetStatusMsg').classList.add('hidden');
+            document.getElementById('resetStatusMsg').innerText = '';
+        }
+
+        async function doResetPassword() {
+            const email = document.getElementById('resetEmail').value;
+            const statusMsg = document.getElementById('resetStatusMsg');
+            
+            if(!email) return alert("Please enter your email");
+            
+            statusMsg.classList.remove('hidden', 'text-emerald-500', 'bg-emerald-100', 'text-red-500', 'bg-red-100');
+            statusMsg.innerText = "Sending reset email...";
+            statusMsg.classList.add('text-slate-600', 'bg-slate-100');
+            
+            try {
+                await window.firebaseReset(window.firebaseAuth, email);
+                statusMsg.classList.remove('text-slate-600', 'bg-slate-100');
+                statusMsg.classList.add('text-emerald-500', 'bg-emerald-100');
+                statusMsg.innerText = "Password reset email sent! Check your inbox.";
+                setTimeout(hideResetPassword, 4000);
+            } catch(e) {
+                statusMsg.classList.remove('text-slate-600', 'bg-slate-100');
+                statusMsg.classList.add('text-red-500', 'bg-red-100');
+                let msg = e.message;
+                if(msg.includes('not-found') || msg.includes('invalid-email')) {
+                    msg = "Email address not found or invalid.";
+                } else if(msg.includes('too-many-requests')) {
+                    msg = "Too many requests. Try again later.";
+                } else {
+                    msg = "Failed to send reset email. Please try again.";
+                }
+                statusMsg.innerText = msg;
+            }
+        }
+
+        function doLogout() {
+            if(window.firebaseSignOut && window.firebaseAuth) {
+                window.firebaseSignOut(window.firebaseAuth);
+            }
+            isAuthenticated = false;
+            document.getElementById('authEmail').value = '';
+            document.getElementById('perspectiveWrapper').style.display = 'none';
+            document.getElementById('loginView').style.display = 'flex';
+            document.getElementById('authPass').value = '';
+            document.getElementById('loginSuccess').style.display = 'none';
+            document.getElementById('loginError').style.display = 'none';
+        }
+
+        // Navigation
+        function toggleMenu() {
+            if (window.innerWidth >= 768) return; // Disable mobile menu effects on desktop
+            
+            const menu = document.getElementById('sideMenu');
+            const app = document.getElementById('appContainer');
+            const backdrop = document.getElementById('menuBackdrop');
+            
+            if (menu.classList.contains('-translate-x-full')) {
+                menu.classList.remove('-translate-x-full');
+                app.style.transform = 'scale(0.92) translateX(270px) rotateY(-8deg)';
+                app.style.borderRadius = '2rem';
+                app.style.boxShadow = '-20px 0 40px rgba(148,163,184,0.2)';
+                app.style.overflow = 'hidden';
+                backdrop.classList.remove('hidden');
+            } else {
+                menu.classList.add('-translate-x-full');
+                app.style.transform = 'none';
+                app.style.borderRadius = '0';
+                app.style.boxShadow = 'none';
+                setTimeout(() => app.style.overflow = 'auto', 500);
+                backdrop.classList.add('hidden');
+            }
+        }
+        
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) {
+                const app = document.getElementById('appContainer');
+                app.style.transform = 'none';
+                app.style.borderRadius = '0';
+                app.style.boxShadow = 'none';
+                app.style.overflow = 'auto';
+                document.getElementById('menuBackdrop').classList.add('hidden');
+                document.getElementById('sideMenu').classList.add('-translate-x-full');
+            }
+        });
+
+        function navTo(pageId) {
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('nav-' + pageId).classList.add('active');
+            
+            document.querySelectorAll('.page-view').forEach(el => el.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            
+            const titles = {
+                'pageDashboard': ['Dashboard', 'Live Overview'],
+                'pageSoil': ['Soil Monitoring', 'Telemetry & Health'],
+                'pageVision': ['Foliar Health AI', 'Crop Diagnostics'],
+                'pagePest': ['Pest Control', 'Trap Management'],
+                'pageWeather': ['Weather Station', 'Micro-Climate'],
+                'pageReports': ['AI Reports', 'Decisions & Actions'],
+                'pageCharts': ['Analytics', '24H Trends'],
+                'pageSettings': ['Settings', 'Configuration']
+            };
+            document.getElementById('headerTitle').innerText = titles[pageId][0];
+            document.getElementById('headerSubtitle').innerText = titles[pageId][1];
+            
+            toggleMenu();
+            if (pageId === 'pageCharts' && trendChart) trendChart.update();
+        }
+
+        // Chart.js
+        let trendChart;
+        function initChart() {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = '"Plus Jakarta Sans", sans-serif';
+            
+            trendChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Moisture (%)', data: [], borderColor: '#3B82F6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, tension: 0.4, fill: true, yAxisID: 'y' },
+                        { label: 'Temp (°C)', data: [], borderColor: '#F59E0B', backgroundColor: 'transparent', borderWidth: 3, borderDash: [6, 6], tension: 0.4, yAxisID: 'y1' }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top', labels: { usePointStyle: true, color: '#64748b', font: { weight: 'bold' } } },
+                        tooltip: { backgroundColor: '#ffffff', titleColor: '#0f172a', bodyColor: '#64748b', borderColor: '#e2e8f0', borderWidth: 1, padding: 12, cornerRadius: 8, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { type: 'linear', display: true, position: 'left', min: 0, max: 100, grid: { color: '#f1f5f9' } },
+                        y1: { type: 'linear', display: true, position: 'right', min: 0, max: 50, grid: { drawOnChartArea: false } }
+                    }
+                }
+            });
+        }
+
+        // Data Logistics
+        async function fetchSettings() {
+            try {
+                const res = await fetch('https://bantay-bukid.duckdns.org/api/settings');
+                const data = await res.json();
+                if(data.rpi_no) {
+                    document.getElementById('rpiNoInput').value = data.rpi_no;
+                    document.getElementById('menuRpiId').innerText = data.rpi_no;
+                }
+                if(data.scan_time) document.getElementById('scanTimeInput').value = data.scan_time;
+                // weather api key not exposed to frontend
+                if(data.weather_location) document.getElementById('weatherLocationInput').value = data.weather_location;
+                if(data.language) document.getElementById('languageInput').value = data.language;
+            } catch (err) {}
+        }
+
+        async function saveLanguage() {
+            const val = document.getElementById('languageInput').value;
+            try {
+                await fetch('https://bantay-bukid.duckdns.org/api/settings', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ language: val })
+                });
+                alert("Language Setting Saved");
+            } catch(e) {}
+        }
+
+        async function saveRpiNo() {
+            const val = document.getElementById('rpiNoInput').value;
+            try {
+                await fetch('https://bantay-bukid.duckdns.org/api/settings', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rpi_no: val })
+                });
+                document.getElementById('menuRpiId').innerText = val;
+                alert("Device ID Saved");
+            } catch(e) {}
+        }
+        
+        async function saveScanTime() {
+            const val = document.getElementById('scanTimeInput').value;
+            try {
+                await fetch('https://bantay-bukid.duckdns.org/api/set-scan-time', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ time: val })
+                });
+                alert("AI Schedule Saved");
+            } catch(e) {}
+        }
+
+        async function saveWeatherSettings() {
+            const loc = document.getElementById('weatherLocationInput').value;
+            try {
+                await fetch('https://bantay-bukid.duckdns.org/api/settings', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ weather_location: loc })
+                });
+                alert("Weather Configuration Saved");
+                fetchRealWeather();
+            } catch(e) {}
+        }
+
+        async function fetchRealWeather() {
+            try {
+                const res = await fetch('https://bantay-bukid.duckdns.org/api/weather');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    document.getElementById('weatherTemp').innerText = data.temp.toFixed(1);
+                    document.getElementById('weatherHum').innerText = Math.round(data.humidity);
+                    
+                    const descEl = document.getElementById('weatherDesc');
+                    if (descEl) descEl.innerText = data.description;
+                    
+                    const windEl = document.getElementById('weatherWind');
+                    if (windEl) windEl.innerText = Math.round(data.wind);
+                    
+                    const mainDescEl = document.getElementById('weatherMainDesc');
+                    if (mainDescEl) mainDescEl.innerText = data.description;
+
+                    const longDescEl = document.getElementById('weatherLongDesc');
+                    if (longDescEl) {
+                        longDescEl.innerText = `Current condition: ${data.description}. Wind speed is ${Math.round(data.wind)} km/h.`;
+                    }
+                }
+            } catch(err) {}
+        }
+
+        async function analyzeWeather() {
+            const btn = document.getElementById('btnAnalyzeWeather');
+            const container = document.getElementById('weatherAnalysisResult');
+            
+            btn.innerHTML = `<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Analyzing...`;
+            btn.disabled = true;
+            container.classList.add('hidden');
+            
+            try {
+                const res = await fetch('https://bantay-bukid.duckdns.org/api/analyze-weather');
+                const data = await res.json();
+                
+                if (data.status === 'success' && data.analysis) {
+                    const ai = data.analysis;
+                    const isStorm = ai.has_storm_warning;
+                    let forecastTableHtml = '<div class="overflow-x-auto"><table class="w-full text-left text-xs text-slate-600 border-collapse mt-3"><thead class="text-slate-400 uppercase tracking-widest border-b border-slate-200"><tr><th class="py-2 px-2">Date</th><th class="py-2 px-2">Temp</th><th class="py-2 px-2">Condition</th><th class="py-2 px-2">Wind</th></tr></thead><tbody>';
+                    if (data.forecast) {
+                        data.forecast.trim().split('\n').forEach(line => {
+                            const parts = line.split(':');
+                            if(parts.length > 1) {
+                                const dateStr = parts.shift().trim();
+                                const rest = parts.join(':').split(',');
+                                if(rest.length >= 3) {
+                                    const temp = rest[0].trim();
+                                    const condition = rest[1].trim();
+                                    const wind = rest[2].trim();
+                                    forecastTableHtml += `<tr class="border-b border-slate-100 last:border-0"><td class="py-2 px-2 font-bold">${dateStr}</td><td class="py-2 px-2">${temp}</td><td class="py-2 px-2 capitalize">${condition}</td><td class="py-2 px-2">${wind}</td></tr>`;
+                                }
+                            }
+                        });
+                    }
+                    forecastTableHtml += '</tbody></table></div>';
+                    
+                    container.innerHTML = `
+                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                            <h3 class="text-sm font-bold text-agri-text uppercase tracking-widest mb-2">5-Day AI Summary</h3>
+                            <p class="text-sm text-slate-700 leading-relaxed font-medium">${ai.summary}</p>
+                        </div>
+                        
+                        <div class="bg-blue-50 p-5 rounded-xl border border-blue-100">
+                            <h3 class="text-sm font-bold text-blue-800 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                                Irrigation Plan
+                            </h3>
+                            <p class="text-sm text-blue-900 leading-relaxed font-medium">${ai.irrigation_advice}</p>
+                        </div>
+                        
+                        <div class="${isStorm ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'} p-5 rounded-xl border">
+                            <h3 class="text-sm font-bold ${isStorm ? 'text-red-700' : 'text-green-700'} uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                ${isStorm ? 'STORM WARNING & PREP' : 'Farm Operations'}
+                            </h3>
+                            <p class="text-sm ${isStorm ? 'text-red-800' : 'text-green-800'} leading-relaxed font-medium">${ai.preparation_warning}</p>
+                        </div>
+                        <div class="mt-2 bg-slate-50 p-4 rounded-lg border border-slate-100 shadow-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold uppercase tracking-wider block text-slate-400 text-xs">Raw Forecast Data</span>
+                                <span class="text-[10px] font-semibold text-emerald-500 uppercase tracking-wider bg-emerald-50 px-2 py-1 rounded-md">Source: Open-Meteo API</span>
+                            </div>
+                            ${forecastTableHtml}
+                        </div>
+                    `;
+                    container.classList.remove('hidden');
+                } else {
+                    alert("Analysis Failed: " + (data.message || 'Check API key setup.'));
+                }
+            } catch (err) {
+                alert("Network error.");
+            }
+            
+            btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg> Refresh Analysis`;
+            btn.disabled = false;
+        }
+
+        async function analyzeTrends() {
+            const btn = document.getElementById('btnAnalyzeTrends');
+            const container = document.getElementById('trendAnalysisResult');
+            
+            btn.innerHTML = `<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Analyzing Data...`;
+            btn.disabled = true;
+            container.classList.add('hidden');
+            
+            try {
+                const res = await fetch('https://bantay-bukid.duckdns.org/api/analyze-trends');
+                const data = await res.json();
+                
+                if (data.status === 'success' && data.analysis) {
+                    const ai = data.analysis;
+                    
+                    container.innerHTML = `
+                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                            <h3 class="text-sm font-bold text-agri-text uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                                Soil Health Pattern
+                            </h3>
+                            <p class="text-sm text-slate-700 leading-relaxed font-medium">${ai.soil_health_trend}</p>
+                        </div>
+                        
+                        <div class="bg-blue-50 p-5 rounded-xl border border-blue-100">
+                            <h3 class="text-sm font-bold text-blue-800 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                                NPK Status & Availability
+                            </h3>
+                            <p class="text-sm text-blue-900 leading-relaxed font-medium">${ai.npk_status}</p>
+                        </div>
+                        
+                        <div class="bg-green-50 border-green-200 p-5 rounded-xl border">
+                            <h3 class="text-sm font-bold text-green-700 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Actionable Insight
+                            </h3>
+                            <p class="text-sm text-green-800 leading-relaxed font-medium">${ai.actionable_insight}</p>
+                        </div>
+                    `;
+                    container.classList.remove('hidden');
+                    container.classList.add('flex');
+                } else {
+                    alert("Analysis Failed: " + (data.message || 'Check connection.'));
+                }
+            } catch (err) {
+                alert("Network error.");
+            }
+            
+            btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg> AI Trend Analysis`;
+            btn.disabled = false;
+        }
+
+        async function fetchData() {
+            try {
+                const res = await fetch('https://bantay-bukid.duckdns.org/api/live-metrics');
+                const data = await res.json();
+                
+                if(data.soil.id) {
+                    document.getElementById('valMoisture').innerText = data.soil.moisture.toFixed(1);
+                    document.getElementById('valTemp').innerText = data.soil.temperature.toFixed(1);
+                    document.getElementById('valPH').innerText = data.soil.ph.toFixed(1);
+                    document.getElementById('valN').innerText = data.soil.nitrogen;
+                    document.getElementById('valP').innerText = data.soil.phosphorus;
+                    document.getElementById('valK').innerText = data.soil.potassium;
+                    
+                    document.getElementById('barN').style.width = Math.min((data.soil.nitrogen / 100) * 100, 100) + '%';
+                    document.getElementById('barP').style.width = Math.min((data.soil.phosphorus / 100) * 100, 100) + '%';
+                    document.getElementById('barK').style.width = Math.min((data.soil.potassium / 100) * 100, 100) + '%';
+                    
+                    const phPercent = (data.soil.ph / 14) * 100;
+                    document.getElementById('phMarker').style.left = `calc(${phPercent}% - 10px)`;
+                    
+                    const soilHealth = (data.soil.moisture > 30 && data.soil.ph >= 5.5 && data.soil.ph <= 7.5) ? "Optimal" : "Needs Review";
+                    const dashSoilEl = document.getElementById('dashSoilHealth');
+                    if(dashSoilEl) dashSoilEl.innerText = soilHealth;
+                    
+                    const analysisEl = document.getElementById('dashAnalysisText');
+                    if (analysisEl) {
+                        analysisEl.innerText = `System Metrics Analysis: The AI has analyzed the NPK (${data.soil.nitrogen}-${data.soil.phosphorus}-${data.soil.potassium}) distribution against the pH level of ${data.soil.ph.toFixed(1)}. Soil moisture is currently at ${data.soil.moisture.toFixed(1)}%. Overall environment is ${soilHealth === 'Optimal' ? 'supporting healthy crop growth with no immediate interventions required' : 'showing signs of stress. Please review detailed soil telemetry and implement recommendations'}.`;
+                    }
+                }
+                document.getElementById('batteryVolt').innerText = data.battery_voltage.toFixed(2) + ' V';
+                document.querySelectorAll('.trapToggleClass, #trapToggle').forEach(el => el.checked = data.trap_state);
+            } catch (err) {}
+        }
+
+        async function fetchHistory() {
+            try {
+                const res = await fetch('https://bantay-bukid.duckdns.org/api/historical-data');
+                const data = await res.json();
+                trendChart.data.labels = data.timestamps;
+                trendChart.data.datasets[0].data = data.moisture;
+                trendChart.data.datasets[1].data = data.temperature;
+                if(document.getElementById('pageCharts').classList.contains('active')) trendChart.update();
+            } catch (err) {}
+        }
+        
+        async function fetchLatestLeaf() {
+            try {
+                const res = await fetch('https://bantay-bukid.duckdns.org/api/latest-leaf');
+                const data = await res.json();
+                if(data.filepath) updateLeafCard(data);
+            } catch (err) {}
+        }
+
+        function updateLeafCard(data) {
+            const img = document.getElementById('leafImage');
+            const placeholder = document.getElementById('noLeafPlaceholder');
+            const statusText = document.getElementById('healthStatus');
+            const indicator = document.getElementById('healthIndicator');
+            const timeText = document.getElementById('scanTime');
+            const weatherDesc = document.getElementById('weatherDesc');
+            const irrigationNeed = document.getElementById('irrigationNeed');
+            const aiRecommendation = document.getElementById('aiRecommendation');
+            const pestAlertBadge = document.getElementById('pestAlertBadge');
+            
+            img.src = "https://bantay-bukid.duckdns.org" + data.filepath + "?t=" + new Date().getTime();
+            img.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            
+            statusText.innerText = data.health_status || "Unknown";
+            timeText.innerText = "Captured: " + new Date(data.timestamp + " UTC").toLocaleString();
+            weatherDesc.innerText = data.weather_desc || "--";
+            
+            if (data.irrigation_needed) {
+                irrigationNeed.innerText = "WATER REQ";
+                irrigationNeed.className = "text-sm font-bold text-blue-500 uppercase tracking-widest";
+            } else {
+                irrigationNeed.innerText = "SUFFICIENT";
+                irrigationNeed.className = "text-sm font-bold text-slate-500 uppercase tracking-widest";
+            }
+            
+            aiRecommendation.innerText = data.recommendation || "No recommendation available.";
+            
+            if (data.pest_detected) {
+                pestAlertBadge.classList.remove('hidden');
+                indicator.className = "w-3.5 h-3.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)] animate-pulse";
+                statusText.classList.add('text-red-500');
+            } else {
+                pestAlertBadge.classList.add('hidden');
+                indicator.className = "w-3.5 h-3.5 rounded-full bg-agri-primary shadow-[0_0_10px_rgba(5,150,105,0.4)]";
+                statusText.classList.remove('text-red-500');
+            }
+            
+            const dashCropEl = document.getElementById('dashCropHealth');
+            if(dashCropEl) dashCropEl.innerText = data.health_status || "--";
+        }
+
+        async function triggerScan() {
+            const btn = document.getElementById('btnScan');
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-agri-primary" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Scanning`;
+            btn.disabled = true;
+            try {
+                const res = await fetch('https://bantay-bukid.duckdns.org/api/trigger-leaf-scan', { method: 'POST' });
+                const json = await res.json();
+                if(json.status === 'success') { 
+                    updateLeafCard(json.data); 
+                    fetchReports();
+                }
+            } catch (err) {}
+            finally {
+                btn.innerHTML = 'Scan';
+                btn.disabled = false;
+            }
+        }
+
+        async function toggleTrap(state) {
+            try {
+                await fetch('https://bantay-bukid.duckdns.org/api/toggle-trap', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ state: state, manual: true })
+                });
+            } catch (err) {}
+        }
+
+        async function fetchReports() {
+            try {
+                const res = await fetch('https://bantay-bukid.duckdns.org/api/reports');
+                const data = await res.json();
+                const container = document.getElementById('reportsContainer');
+                
+                if(!data || data.length === 0) {
+                    container.innerHTML = `<div class="text-center py-10 text-agri-sub text-sm font-bold uppercase tracking-widest">No reports generated yet</div>`;
+                    return;
+                }
+                
+                let html = '';
+                data.forEach((scan, i) => {
+                    const dateStr = new Date(scan.timestamp + " UTC").toLocaleString();
+                    const isAlert = scan.pest_detected || scan.irrigation_needed;
+                    
+                    html += `
+                    <div class="card-soft p-5 border-l-4 ${isAlert ? 'border-l-red-500' : 'border-l-agri-primary'} mb-4">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="text-sm font-extrabold text-agri-text uppercase tracking-widest">${dateStr}</h3>
+                                <p class="text-xs text-agri-sub font-bold mt-1">Status: ${scan.health_status || 'Unknown'} | Growth Stage: ${scan.growth_stage || 'Unknown'}</p>
+                            </div>
+                            ${isAlert ? '<span class="bg-red-100 text-red-600 text-[10px] px-2 py-1 rounded font-bold uppercase">Attention Required</span>' : '<span class="bg-green-100 text-green-600 text-[10px] px-2 py-1 rounded font-bold uppercase">Optimal</span>'}
+                        </div>
+                        <div class="text-sm text-slate-700 font-medium mb-4 space-y-2">
+                            ${scan.soil_analysis ? `<p><strong class="text-agri-primary">Soil & Nutrients:</strong> ${scan.soil_analysis}</p>` : ''}
+                            ${scan.pest_analysis ? `<p><strong class="text-red-500">Pests & Health:</strong> ${scan.pest_analysis}</p>` : ''}
+                            ${scan.main_suggestion ? `<p><strong class="text-blue-500">Main Suggestion:</strong> ${scan.main_suggestion}</p>` : ''}
+                            <p class="text-xs italic text-slate-500 mt-2">${scan.recommendation || 'No specific action required at this time.'}</p>
+                        </div>
+                        <div class="flex justify-end gap-2">
+                            <button onclick="deleteReport(${scan.id})" class="bg-red-50 text-red-500 hover:bg-red-100 text-xs px-4 py-2 rounded-lg font-bold uppercase tracking-wider transition">Delete</button>
+                            ${isAlert ? `<button onclick="implementSolution(this)" class="bg-agri-primary shadow-soft-btn active:shadow-soft-inner text-white text-xs px-4 py-2 rounded-lg font-bold uppercase tracking-wider transition">Implement Solution</button>` : `<button onclick="implementSolution(this)" class="bg-slate-200 shadow-soft-btn active:shadow-soft-inner text-slate-600 text-xs px-4 py-2 rounded-lg font-bold uppercase tracking-wider transition">Acknowledge</button>`}
+                        </div>
+                    </div>`;
+                });
+                container.innerHTML = html;
+                
+            } catch (err) {}
+        }
+        
+        function implementSolution(btn) {
+            btn.innerText = "Implemented ✓";
+            btn.className = "bg-green-500 text-white text-xs px-4 py-2 rounded-lg font-bold uppercase tracking-wider transition";
+            btn.disabled = true;
+        }
+
+        async function deleteReport(id) {
+            if(!confirm("Are you sure you want to delete this report?")) return;
+            try {
+                const res = await fetch(`https://bantay-bukid.duckdns.org/api/reports/${id}`, { method: 'DELETE' });
+                const json = await res.json();
+                if(json.status === 'success') {
+                    fetchReports();
+                } else {
+                    alert("Failed to delete report: " + (json.message || "Unknown error"));
+                }
+            } catch (err) {
+                alert("Network error.");
+            }
+        }
+
+        let appInit = false;
+        function initApp() {
+            if(appInit) return;
+            appInit = true;
+            initChart();
+            fetchSettings();
+            fetchData(); 
+            fetchHistory(); 
+            fetchLatestLeaf(); 
+            fetchReports();
+            fetchRealWeather();
+            setInterval(fetchData, 30000); 
+            setInterval(fetchRealWeather, 600000); // 10 mins
+            setInterval(fetchHistory, 300000); 
+            setInterval(checkAuth, 30000); // Check session every 30 seconds
+        }
+
+        checkAuth();
+    </script>
+</body>
+</html>
