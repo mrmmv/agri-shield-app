@@ -1227,7 +1227,17 @@
             const aiRecommendation = document.getElementById('aiRecommendation');
             const pestAlertBadge = document.getElementById('pestAlertBadge');
             
-            img.src = "http://bantay-bukid.duckdns.org" + data.filepath + "?t=" + new Date().getTime();
+            const imgUrl = "http://bantay-bukid.duckdns.org" + data.filepath + "?t=" + new Date().getTime();
+            fetch(imgUrl)
+                .then(res => res.blob())
+                .then(blob => {
+                    img.src = URL.createObjectURL(blob);
+                })
+                .catch(err => {
+                    console.error("Failed to load image via fetch", err);
+                    img.src = imgUrl; // Fallback
+                });
+                
             img.classList.remove('hidden');
             placeholder.classList.add('hidden');
             
