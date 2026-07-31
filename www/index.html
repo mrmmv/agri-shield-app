@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bantay-Bukid Omni Station</title>
-    <link rel="icon" type="image/png" href="https://bantay-bukid.duckdns.org/static/logo.png">
+    <link rel="icon" type="image/png" href="http://bantay-bukid.duckdns.org/static/logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -688,7 +688,7 @@
         
         window.initFirebase = async function() {
             try {
-                const res = await fetch('https://bantay-bukid.duckdns.org/api/firebase-config');
+                const res = await fetch('http://bantay-bukid.duckdns.org/api/firebase-config');
                 const config = await res.json();
                 
                 if(!config.apiKey) return console.warn("Firebase config missing from .env");
@@ -797,7 +797,7 @@
                 } else if(msg.includes('network-request-failed')) {
                     msg = "Network error. Please check your connection.";
                 } else {
-                    msg = "An error occurred during authentication.";
+                    msg = "An error occurred during authentication. Details: " + msg;
                 }
                 errorLabel.innerText = msg;
             }
@@ -952,7 +952,7 @@
         // Data Logistics
         async function fetchSettings() {
             try {
-                const res = await fetch('https://bantay-bukid.duckdns.org/api/settings');
+                const res = await fetch('http://bantay-bukid.duckdns.org/api/settings');
                 const data = await res.json();
                 if(data.rpi_no) {
                     document.getElementById('rpiNoInput').value = data.rpi_no;
@@ -968,7 +968,7 @@
         async function saveLanguage() {
             const val = document.getElementById('languageInput').value;
             try {
-                await fetch('https://bantay-bukid.duckdns.org/api/settings', {
+                await fetch('http://bantay-bukid.duckdns.org/api/settings', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ language: val })
                 });
@@ -979,7 +979,7 @@
         async function saveRpiNo() {
             const val = document.getElementById('rpiNoInput').value;
             try {
-                await fetch('https://bantay-bukid.duckdns.org/api/settings', {
+                await fetch('http://bantay-bukid.duckdns.org/api/settings', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ rpi_no: val })
                 });
@@ -991,7 +991,7 @@
         async function saveScanTime() {
             const val = document.getElementById('scanTimeInput').value;
             try {
-                await fetch('https://bantay-bukid.duckdns.org/api/set-scan-time', {
+                await fetch('http://bantay-bukid.duckdns.org/api/set-scan-time', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ time: val })
                 });
@@ -1002,7 +1002,7 @@
         async function saveWeatherSettings() {
             const loc = document.getElementById('weatherLocationInput').value;
             try {
-                await fetch('https://bantay-bukid.duckdns.org/api/settings', {
+                await fetch('http://bantay-bukid.duckdns.org/api/settings', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ weather_location: loc })
                 });
@@ -1013,7 +1013,7 @@
 
         async function fetchRealWeather() {
             try {
-                const res = await fetch('https://bantay-bukid.duckdns.org/api/weather');
+                const res = await fetch('http://bantay-bukid.duckdns.org/api/weather');
                 const data = await res.json();
                 if (data.status === 'success') {
                     document.getElementById('weatherTemp').innerText = data.temp.toFixed(1);
@@ -1045,7 +1045,7 @@
             container.classList.add('hidden');
             
             try {
-                const res = await fetch('https://bantay-bukid.duckdns.org/api/analyze-weather');
+                const res = await fetch('http://bantay-bukid.duckdns.org/api/analyze-weather');
                 const data = await res.json();
                 
                 if (data.status === 'success' && data.analysis) {
@@ -1119,7 +1119,7 @@
             container.classList.add('hidden');
             
             try {
-                const res = await fetch('https://bantay-bukid.duckdns.org/api/analyze-trends');
+                const res = await fetch('http://bantay-bukid.duckdns.org/api/analyze-trends');
                 const data = await res.json();
                 
                 if (data.status === 'success' && data.analysis) {
@@ -1165,7 +1165,7 @@
 
         async function fetchData() {
             try {
-                const res = await fetch('https://bantay-bukid.duckdns.org/api/live-metrics');
+                const res = await fetch('http://bantay-bukid.duckdns.org/api/live-metrics');
                 const data = await res.json();
                 
                 if(data.soil.id) {
@@ -1199,7 +1199,7 @@
 
         async function fetchHistory() {
             try {
-                const res = await fetch('https://bantay-bukid.duckdns.org/api/historical-data');
+                const res = await fetch('http://bantay-bukid.duckdns.org/api/historical-data');
                 const data = await res.json();
                 trendChart.data.labels = data.timestamps;
                 trendChart.data.datasets[0].data = data.moisture;
@@ -1210,7 +1210,7 @@
         
         async function fetchLatestLeaf() {
             try {
-                const res = await fetch('https://bantay-bukid.duckdns.org/api/latest-leaf');
+                const res = await fetch('http://bantay-bukid.duckdns.org/api/latest-leaf');
                 const data = await res.json();
                 if(data.filepath) updateLeafCard(data);
             } catch (err) {}
@@ -1227,7 +1227,7 @@
             const aiRecommendation = document.getElementById('aiRecommendation');
             const pestAlertBadge = document.getElementById('pestAlertBadge');
             
-            img.src = "https://bantay-bukid.duckdns.org" + data.filepath + "?t=" + new Date().getTime();
+            img.src = "http://bantay-bukid.duckdns.org" + data.filepath + "?t=" + new Date().getTime();
             img.classList.remove('hidden');
             placeholder.classList.add('hidden');
             
@@ -1264,7 +1264,7 @@
             btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-agri-primary" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Scanning`;
             btn.disabled = true;
             try {
-                const res = await fetch('https://bantay-bukid.duckdns.org/api/trigger-leaf-scan', { method: 'POST' });
+                const res = await fetch('http://bantay-bukid.duckdns.org/api/trigger-leaf-scan', { method: 'POST' });
                 const json = await res.json();
                 if(json.status === 'success') { 
                     updateLeafCard(json.data); 
@@ -1279,7 +1279,7 @@
 
         async function toggleTrap(state) {
             try {
-                await fetch('https://bantay-bukid.duckdns.org/api/toggle-trap', {
+                await fetch('http://bantay-bukid.duckdns.org/api/toggle-trap', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ state: state, manual: true })
                 });
@@ -1288,7 +1288,7 @@
 
         async function fetchReports() {
             try {
-                const res = await fetch('https://bantay-bukid.duckdns.org/api/reports');
+                const res = await fetch('http://bantay-bukid.duckdns.org/api/reports');
                 const data = await res.json();
                 const container = document.getElementById('reportsContainer');
                 
@@ -1337,7 +1337,7 @@
         async function deleteReport(id) {
             if(!confirm("Are you sure you want to delete this report?")) return;
             try {
-                const res = await fetch(`https://bantay-bukid.duckdns.org/api/reports/${id}`, { method: 'DELETE' });
+                const res = await fetch(`http://bantay-bukid.duckdns.org/api/reports/${id}`, { method: 'DELETE' });
                 const json = await res.json();
                 if(json.status === 'success') {
                     fetchReports();
