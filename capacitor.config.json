@@ -3,6 +3,7 @@
   "appName": "Bantay-Bukid",
   "webDir": "www",
   "server": {
+    "url": "http://bantay-bukid.duckdns.org",
     "cleartext": true
   },
   "plugins": {
